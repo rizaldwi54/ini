@@ -16,7 +16,11 @@
                     Form
                 </div>
                 <div class="card-body">
-                    <form wire:submit.prevent="saveLocation">
+                    <form @if ($isEdit)
+                            wire:submit.prevent="updateLocation"
+                        @else
+                            wire:submit.prevent="saveLocation"
+                        @endif>
                         <div class="row">
                             <div class="col-sm-6">
                                 <div class="form-group">
@@ -54,9 +58,16 @@
                             @if ($image)
                                 <img src="{{ $image->temporaryUrl() }}" class="img-fluid">
                             @endif
+
+                            @if ($imageUrl && !$image)
+                                <img src="{{ asset('/storage/public'.$imageUrl) }}" class="img-fluid">
+                            @endif
                         </div>
                         <div class="form-group">
-                            <button type="submit" class="btn btn-dark text-white btn-block">Submit Location</button>
+                            <button type="submit" class="btn btn-dark text-white btn-block">{{ $isEdit ? "Update Location" : "Submit Location" }}</button>
+                            @if ($isEdit)
+                                <button wire:click="deleteLocation"type="button" class="btn btn-danger text-white btn-block">Delete Location</button>
+                            @endif
                         </div>
                     </form>
                 </div>
@@ -124,7 +135,7 @@
                 markerElement.style.width = '50px'
                 markerElement.style.height = '50px'
 
-                const imageStorage = '{{ asset("/storage/images") }}' + '/' + image
+                const imageStorage = '{{ asset("/storage/public") }}' + '/' + image
 
                 const content = `
                     <div style="overflow-y, auto;max-height:400px, width:100%">
@@ -146,6 +157,11 @@
                         </table>
                     </div>`
 
+                markerElement.addEventListener('livewire:click', (e) => {
+                    const locationId = e.toElement.id
+                    @this.findLocationById(locationId)
+                })
+
                 const popUp = new mapboxgl.Popup({
                     offset:25
                 }).setHTML(content).setMaxWidth("400px")
@@ -162,6 +178,17 @@
         window.addEventListener('locationAdded', (e) => {
             loadLocations(JSON.parse(e.detail))
         })
+
+        window.addEventListener('updateLocation', (e) => {
+            loadLocations(JSON.parse(e.detail))
+            $('.mapboxgl-popup').remove()
+        })
+
+        window.addEventListener('deleteLocation', (e) => {
+            $('.marker' + e.detail).remove()
+            $('.mapboxgl-popup').remove()
+        })
+
 
         map.addControl(new mapboxgl.NavigationControl())
 
