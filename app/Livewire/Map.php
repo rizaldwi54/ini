@@ -11,8 +11,10 @@ class Map extends Component
 {
     use WithFileUploads;
 
-    public $long,$lat,$title,$description,$image;
+    public $locationId,$long,$lat,$title,$description,$image;
     public $geoJson;
+    public $imageUrl;
+    public $isEdit = false;
 
 
     private function loadLocations(){
@@ -44,7 +46,14 @@ class Map extends Component
         $geoJson = collect($geoLocation)->toJson();
         $this->geoJson = $geoJson;
     }
-
+    private function clearForm(){
+        $this->long = '';
+        $this->lat = '';
+        $this->title = '';
+        $this->description = '';
+        $this->image = '';
+    }
+    
     public function saveLocation(){
         $this->validate([
             'long' => 'required',
@@ -56,11 +65,18 @@ class Map extends Component
 
         $imageName = md5($this->image.microtime()).'.'.$this->image->extension();
 
-        storage::putFileAs(
-            'public/images',
+
+        // storage::putFileAs(
+        //     'public/images',
+        //     $this->image.
+        //     $imageName
+        // );
+        storage::disk('public')->put(
+            'storage/public',
             $this->image.
             $imageName
         );
+        
 
         Location::create([
             'long' => $this->long,
@@ -73,17 +89,74 @@ class Map extends Component
 
         $this->clearForm();
         $this->loadLocations();
-        $this->dispatchBrowserEvent('locationAdded', $this->geoJson);
+        $this->dispatch('locationAdded', $this->geoJson);
     }
-    private function clearForm(){
-        $this->long = '';
-        $this->lat = '';
-        $this->title = '';
-        $this->description = '';
-        $this->image = '';
+    
+    public function findLocationById($id) {
+        // $location = Location::find($id);
+        $location = Location::findOrFail($id);
+        
+        $this->locationId = $id; 
+        $this->long = $location->long;
+        $this->lat = $location->lat;
+        $this->title = $location->title;
+        $this->description = $location->description;
+        $this->imageUrl = $location->image;
+        $this->isEdit = true;
     }
 
-    
+
+
+    public function updateLocation(){
+        $this->validate([
+            'long' => 'required',
+            'lat' => 'required',
+            'title' => 'required',
+            'description' => 'required',
+            
+        ]);
+
+        $location = Location::findOrFail($this->locationId);
+
+        if($this->image){
+            $imageName = md5($this->image.microtime()).'.'.$this->image->extension();
+
+            storage::disk('public')->put(
+                'storage/public',
+                $this->image.
+                $imageName
+            );
+
+            $updateData = [
+                'title' => $this->title,
+                'description' => $this->description,
+                'image' => $imageName
+            ];
+        }else{
+            $updateData = [
+                'title' => $this->title,
+                'description' => $this->description,
+                
+            ];
+        }
+
+        $location->update($updateData);
+        $this->imageUrl = "";
+        $this->clearForm();
+        $this->loadLocations();
+        $this->dispatch('updateLocation', $this->geoJson);
+    }
+
+    function deleteLocation(){
+        $location = Location::findOrFail($this->locationId);
+        $location->delete();
+
+        $this->imageUrl = "";
+        $this->clearForm();
+        $this->isEdit = false;
+        $this->dispatch('deleteLocation', $location->id);
+    }
+
     public function render()
     {
         $this->loadLocations();
