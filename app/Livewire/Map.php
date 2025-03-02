@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use App\models\Location;
 
+
 class Map extends Component
 {
     use WithFileUploads;
@@ -72,7 +73,7 @@ class Map extends Component
         //     $imageName
         // );
         storage::disk('public')->put(
-            'storage/public',
+            'public/storage/public',
             $this->image.
             $imageName
         );
@@ -122,7 +123,7 @@ class Map extends Component
             $imageName = md5($this->image.microtime()).'.'.$this->image->extension();
 
             storage::disk('public')->put(
-                'storage/public',
+                'public/storage/public',
                 $this->image.
                 $imageName
             );
